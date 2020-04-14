@@ -1,0 +1,755 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "from os import listdir\n",
+    "import nltk\n",
+    "from nltk.tokenize import RegexpTokenizer\n",
+    "from collections import defaultdict\n",
+    "import string\n",
+    "import re\n",
+    "from nltk.stem import PorterStemmer\n",
+    "from nltk.corpus import stopwords\n",
+    "from nltk.stem import WordNetLemmatizer\n",
+    "import math\n",
+    "from collections import Counter\n",
+    "import numpy as np\n",
+    "import statistics\n",
+    "import operator\n",
+    "from sklearn.manifold import TSNE\n",
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "from num2words import num2words\n",
+    "import pickle\n",
+    "import time\n",
+    "from sklearn.metrics.pairwise import cosine_similarity"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def convert_tolowercase(data):\n",
+    "    return (data.lower())\n",
+    "\n",
+    "\n",
+    "def regextokenizer_func(data):\n",
+    "    #print(type(data))\n",
+    "    tokenizer=RegexpTokenizer(r'\\w+')\n",
+    "    data=tokenizer.tokenize(data)\n",
+    "    return data\n",
+    "\n",
+    "def remove_stopwords(data):\n",
+    "    stop_words=set(stopwords.words('english'))\n",
+    "    result=[i for i in data if not i in stop_words]\n",
+    "    return result\n",
+    "\n",
+    "\n",
+    "def lemmatization_func(data):\n",
+    "    lemmatizer=WordNetLemmatizer()\n",
+    "    result=[]\n",
+    "    for word in data:\n",
+    "        result.append(lemmatizer.lemmatize(word))\n",
+    "    return result\n",
+    "\n",
+    "def stemming_func(data):\n",
+    "    stemmer=PorterStemmer()\n",
+    "    tokenizer=RegexpTokenizer(r'\\w+')\n",
+    "    tokens=tokenizer.tokenize(data)\n",
+    "    data_new=\"\"\n",
+    "    for i in tokens:\n",
+    "        data_new+=\" \"+stemmer.stem(i)\n",
+    "    return data_new\n",
+    "def convert_numbers(k):\n",
+    "    for i in range(len(k)):\n",
+    "        try:\n",
+    "            k[i] = num2words(int(k[i]))\n",
+    "        except:\n",
+    "            pass\n",
+    "    return k\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def getListOfFiles(dirName):\n",
+    "    listOfFile = os.listdir(dirName)\n",
+    "    allFiles = list()\n",
+    "    for entry in listOfFile:\n",
+    "        fullPath = os.path.join(dirName, entry)\n",
+    "        \n",
+    "        if os.path.isdir(fullPath):\n",
+    "            allFiles = allFiles + getListOfFiles(fullPath)\n",
+    "        else:\n",
+    "            allFiles.append(fullPath)\n",
+    "                \n",
+    "    return allFiles\n",
+    "\n",
+    "\n",
+    "path=\"20_newsgroups\"\n",
+    "folder_path=getListOfFiles(path)\n",
+    "unique_labels = ['comp.graphics', 'rec.sport.hockey', 'sci.med', 'sci.space', 'talk.politics.misc']"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "5000\n",
+      "5000\n",
+      "done\n"
+     ]
+    }
+   ],
+   "source": [
+    "total_doc_id=[]\n",
+    "body_list=[]\n",
+    "labels=[]\n",
+    "doc=0\n",
+    "j=0\n",
+    "for i in range (0,len(folder_path),1):\n",
+    "    text=open(folder_path[i],encoding='utf-8',errors='ignore').read().strip()\n",
+    "    text=convert_tolowercase(text)\n",
+    "    text=stemming_func(text)\n",
+    "    text=regextokenizer_func(text)\n",
+    "    text=lemmatization_func(text)\n",
+    "    text=remove_stopwords(text)\n",
+    "    body_list.append(text)\n",
+    "    labels.append(unique_labels[j])\n",
+    "    if((i+1)%1000==0):\n",
+    "        j+=1\n",
+    "    \n",
+    "    \n",
+    "print(len(body_list))\n",
+    "print(len(labels))\n",
+    "docs_pd=pd.DataFrame([body_list,labels]).T\n",
+    "docs_pd.to_pickle(\"docs_pd\")\n",
+    "print(\"done\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 56,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def accuaracy(actual,predicted):\n",
+    "    correct=0\n",
+    "    for i in range(len(actual)):\n",
+    "        if actual[i]==predicted[i]:\n",
+    "            correct+=1\n",
+    "    acc=float(correct/len(actual))*100.0\n",
+    "    print(acc)\n",
+    "    return acc"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 53,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.metrics import confusion_matrix\n",
+    "def confusion_matrix_func(actual,predicted):\n",
+    "    print(confusion_matrix(actual,predicted))\n",
+    "    return (confusion_matrix(actual,predicted))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def TF_frequency(m):\n",
+    "    \n",
+    "    class_frequency = {}\n",
+    "    class_count = {}\n",
+    "    counter = 0\n",
+    "    for i in unique_labels:\n",
+    "        current_count = len(Counter(m[i]))\n",
+    "        class_count[i] = current_count\n",
+    "        counter += current_count\n",
+    "        ll = Counter(m[i])\n",
+    "        for j in ll:\n",
+    "            class_frequency[i, j] = ll[j]\n",
+    "        \n",
+    "    return class_frequency,class_count"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 72,
+   "metadata": {
+    "scrolled": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "4000\n",
+      "1000\n",
+      "Counter({'talk.politics.misc': 813, 'comp.graphics': 807, 'sci.space': 803, 'rec.sport.hockey': 793, 'sci.med': 784})\n",
+      "79870\n",
+      "{'comp.graphics': 17199, 'rec.sport.hockey': 16180, 'sci.med': 13167, 'sci.space': 17258, 'talk.politics.misc': 16066}\n",
+      "206660\n"
+     ]
+    }
+   ],
+   "source": [
+    "docs_pd=pd.read_pickle(\"docs_pd\")\n",
+    "df=docs_pd.sample(frac=1.0)\n",
+    "train=docs_pd.sample(frac=0.8)\n",
+    "test=df.drop(train.index)\n",
+    "train=train.reset_index(drop=True)\n",
+    "test=test.reset_index(drop=True)\n",
+    "print(len(train))\n",
+    "print(len(test))\n",
+    "train_prior=Counter(train[1])\n",
+    "print(train_prior)\n",
+    "class_dict={}\n",
+    "for i in range(train.shape[0]):\n",
+    "    try:\n",
+    "        class_dict[train[1][i]]+=train[0][i]\n",
+    "    except:\n",
+    "        class_dict[train[1][i]]=train[0][i]\n",
+    "#print(class_dict['sci.space'])      \n",
+    "class_frequecy,class_count=TF_frequency(class_dict)\n",
+    "unique_words = set()\n",
+    "for i in class_dict:\n",
+    "    unique_words = unique_words | set(class_dict[i])\n",
+    "unique_words_count = len(unique_words)\n",
+    "print(len(class_frequecy))\n",
+    "print(class_count)\n",
+    "print(len(class_dict['sci.med']))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def Naive_Bayes(class_frequecy,class_count):\n",
+    "    actual=[]\n",
+    "    predicted=[]\n",
+    "    for i in range(test.shape[0]):\n",
+    "        classes_word_probablity=[]\n",
+    "        actual.append(test[1][i])\n",
+    "        for labels in unique_labels:\n",
+    "            word_prob=0;\n",
+    "            for word in test[0][i]:\n",
+    "                try:\n",
+    "                    temp1,temp2=class_frequecy[labels,word],class_count[labels]\n",
+    "                except:\n",
+    "                    temp1,temp2=0,class_count[labels]\n",
+    "                temp3=(temp1+1)/(temp2+unique_words_count)\n",
+    "                word_prob+=np.log(temp3)\n",
+    "            classes_word_probablity.append(word_prob)\n",
+    "        predicted.append(unique_labels[np.argmax(classes_word_probablity)])\n",
+    "        \n",
+    "    return actual,predicted       \n",
+    "                \n",
+    "                "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "95.24000000000001\n"
+     ]
+    }
+   ],
+   "source": [
+    "actual,predicted=Naive_Bayes(class_frequecy,class_count)\n",
+    "#print(predicted)\n",
+    "#print(actual)\n",
+    "\n",
+    "acc=accuaracy(actual,predicted)\n",
+    "print(acc)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#TF_IDF FEATURE SELECTION\n",
+    "def FEATURE_SELECTION_TFIDF(train,test,percent):\n",
+    "    corpus=[]\n",
+    "    for i in class_dict:\n",
+    "        corpus+=class_dict[i]\n",
+    "    #print(len(corpus))\n",
+    "    DF={}\n",
+    "    n=0\n",
+    "    for i in class_dict:\n",
+    "        for word in class_dict[i]:\n",
+    "            try:\n",
+    "                DF[word].add(n)\n",
+    "            except:\n",
+    "                DF[word]={n}\n",
+    "        n+=1\n",
+    "    for word in DF:\n",
+    "        DF[word]=len(DF[word])\n",
+    "    #print(len(DF))\n",
+    "    tf_idf={}\n",
+    "    N=train.shape[0]\n",
+    "    counter=Counter(corpus)\n",
+    "    word_count=len(corpus)\n",
+    "    for token in set(corpus):\n",
+    "        tf=counter[token]/word_count\n",
+    "        try:\n",
+    "            df=DF[token]\n",
+    "        except:\n",
+    "            pass\n",
+    "        idf=np.log((N+1)/(df+1))\n",
+    "        tf_idf[token]=idf*tf\n",
+    "    sorted_tf_idf=sorted(tf_idf.items(),key=operator.itemgetter(1),reverse=True)\n",
+    "    #print((sorted_tf_idf))\n",
+    "    sorted_tf_idf=sorted_tf_idf[:int(len(sorted_tf_idf)*(percent/100.0))]\n",
+    "    #print(len(sorted_tf_idf))\n",
+    "    sorted_tf_idf=[i[0] for i in sorted_tf_idf]\n",
+    "    #print(sorted_tf_idf)\n",
+    "    return sorted_tf_idf\n",
+    "    \n",
+    "    "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def storing_terms_TFIDF_func(sorted_tf_idf):\n",
+    "    class_count={}\n",
+    "    class_frequency={}\n",
+    "    #print(unique_labels)\n",
+    "    for i in unique_labels:\n",
+    "        ll=Counter(class_dict[i])\n",
+    "        for word in sorted_tf_idf:\n",
+    "            class_frequency[i,word]=ll[word]\n",
+    "            try:\n",
+    "                class_count[i]+=ll[word]\n",
+    "            except:\n",
+    "                class_count[i]=ll[word]\n",
+    "    return class_frequecy,class_count"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def storing_terms_MI_func(MI_score):\n",
+    "    class_frequecy={}\n",
+    "    class_count={}\n",
+    "    for label in unique_labels:\n",
+    "        ll=Counter(MI_score[label])\n",
+    "        for word in MI_score[label]:\n",
+    "            class_frequecy[label,word]=ll[word]\n",
+    "            try:\n",
+    "                class_count[label]+=ll[word]\n",
+    "            except:\n",
+    "                class_count[label]=ll[word]\n",
+    "    return class_frequecy,class_count\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "97.64\n"
+     ]
+    }
+   ],
+   "source": [
+    "sorted_feature_list=FEATURE_SELECTION_TFIDF(train,test,10)\n",
+    "class_frequecy1,class_count1=storing_terms_TFIDF_func(sorted_feature_list)\n",
+    "actual1,predicted1=Naive_Bayes(class_frequecy1,class_count1)\n",
+    "\n",
+    "acc=accuaracy(actual1,predicted1)\n",
+    "print(acc)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def calculateMI(N11,N10,N01,N00):\n",
+    "    N=N11+N10+N01+N00\n",
+    "    N1_dot=N11+N10\n",
+    "    N0_dot=N00+N01\n",
+    "    Ndot_1=N01+N11\n",
+    "    Ndot_0=N00+N10\n",
+    "    MI=0\n",
+    "    try:\n",
+    "        MI=(N11/N)*np.log2((N*N11)/(N1_dot*Ndot_1))+(N01/N)*np.log2((N*N01)/(N0_dot*Ndot_1))+(N10/N)*np.log2((N*N10)/(N1_dot*Ndot_0))+(N00/N)*np.log2((N*N00)/(N0_dot*Ndot_0))\n",
+    "    except:\n",
+    "        pass\n",
+    "    return float(MI)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 61,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def FEATURE_SELECTION_MUTUAL_INFORMATION(train,test,percent):\n",
+    "    #print(train.head())\n",
+    "    #print(test.head())\n",
+    "    N=train.shape[0]\n",
+    "    class_count_docs=Counter(train[1])\n",
+    "    #print(class_count_docs)\n",
+    "    class_docs_words={}\n",
+    "    MI_score={}\n",
+    "    for i in unique_labels:\n",
+    "        class_docs_words[i]={}\n",
+    "        MI_score[i]={}\n",
+    "    for i in range(train.shape[0]):\n",
+    "        class_docs_words[train[1][i]][i]=train[0][i]\n",
+    "    DF={}\n",
+    "    \n",
+    "    for labels in class_docs_words:\n",
+    "        cnt=0;\n",
+    "        for docs in class_docs_words[labels]:\n",
+    "            for word in class_docs_words[labels][docs]:\n",
+    "                try:\n",
+    "                    DF[labels,word].add(cnt)\n",
+    "                except:\n",
+    "                    DF[labels,word]={cnt}\n",
+    "            cnt+=1\n",
+    "    \n",
+    "    for labels,word in DF:\n",
+    "        DF[labels,word]=len(DF[labels,word])\n",
+    "   \n",
+    "    \n",
+    "    for labels,word in DF:\n",
+    "        N11=DF[labels,word]\n",
+    "        N01=class_count_docs[labels]-N11\n",
+    "        N10=0\n",
+    "        for not_labels in unique_labels:\n",
+    "            if(not_labels!=labels):\n",
+    "                try:\n",
+    "                    N10+=DF[not_labels,word]\n",
+    "                except:\n",
+    "                    N10+=0\n",
+    "        N00=N-(N11+N10+N01)\n",
+    "        MI_score[labels][word]=calculateMI(N11,N10,N01,N00)\n",
+    "    for label in unique_labels:\n",
+    "        MI_score[label]=sorted(MI_score[label].items(),key=operator.itemgetter(1),reverse=True)\n",
+    "        \n",
+    "        MI_score[label]=[i[0] for i in MI_score[label]]\n",
+    "        MI_score[label]=MI_score[label][0:int(len(MI_score[label])*(percent/100.0))]\n",
+    "    \n",
+    "    #print(MI_score)\n",
+    "    intersection_list=[]\n",
+    "    for label in unique_labels:\n",
+    "        intersection_list+=MI_score[label]\n",
+    "    intersection_list=set(intersection_list)\n",
+    "    return intersection_list\n",
+    "    "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {
+    "scrolled": false
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/usr/local/lib/python3.7/dist-packages/ipykernel_launcher.py:9: RuntimeWarning: divide by zero encountered in log2\n",
+      "  if __name__ == '__main__':\n",
+      "/usr/local/lib/python3.7/dist-packages/ipykernel_launcher.py:9: RuntimeWarning: invalid value encountered in double_scalars\n",
+      "  if __name__ == '__main__':\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "75.88000000000001\n"
+     ]
+    }
+   ],
+   "source": [
+    "MI_score=FEATURE_SELECTION_MUTUAL_INFORMATION(train,test,10)\n",
+    "class_frequecy2,class_count2=storing_terms_MI_func(MI_score)  \n",
+    "actual2,predicted2=Naive_Bayes(class_frequecy2,class_count2)\n",
+    "acc2=accuaracy(actual2,predicted2)\n",
+    "print(acc2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def preprocessing_for_KNN_func(train,sorted_features_list):\n",
+    "    N=train.shape[0]\n",
+    "    M=len(sorted_features_list)\n",
+    "    train_list=np.empty(shape=[N,M])\n",
+    "    #print(train_list.shape)\n",
+    "    \n",
+    "    for i in range(train.shape[0]):\n",
+    "        ll=Counter(train[0][i])\n",
+    "        temp_list=[]\n",
+    "        for word in sorted_feature_list:\n",
+    "            if (ll[word]>0):\n",
+    "                temp_list.append(1)\n",
+    "            else:\n",
+    "                temp_list.append(0)\n",
+    "        #train_list=np.insert(train_list,i,temp_list,axis=0)\n",
+    "        train_list[i]=temp_list\n",
+    "        temp_list.clear()\n",
+    "    #print(N)        \n",
+    "    print((train_list.shape))\n",
+    "    return np.array(train_list)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 33,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import math\n",
+    "def cosine_dot(a,b):\n",
+    "#     if (np.linalg.norm(a)==0 or np.linalg.norm(b)==0):\n",
+    "#         return 0;\n",
+    "#     else:\n",
+    "#         #temp=np.dot(a,b)/(np.linalg.norm(a)*np.linalg.norm(b))\n",
+    "    #temp=np.dot(a,b)\n",
+    "#     temp=0.0\n",
+    "#     for i in range(len(a)):\n",
+    "#         temp+=(a[i] and b[i])\n",
+    "#     return float(temp/(math.sqrt(sum(a))*math.sqrt(sum(b))))\n",
+    "    a=np.array(a)\n",
+    "    b=np.array(b)\n",
+    "    dist = np.linalg.norm(a-b)\n",
+    "    return dist"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 36,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def KNN_algorithm_func(train_matrix,test_matrix,K):\n",
+    "    min_dist=0.0\n",
+    "    min_index=0.0\n",
+    "    actual=[]\n",
+    "    predicted=[]\n",
+    "    train_matrix=train_matrix.tolist()\n",
+    "    test_matrix=test_matrix.tolist()\n",
+    "    print(len(train_matrix))\n",
+    "    for i in range(len(test_matrix)):\n",
+    "        actual.append(test[1][i])\n",
+    "        temp_distance={}\n",
+    "        for j in range(len(train_matrix)):\n",
+    "            dist=cosine_dot(test_matrix[i],train_matrix[j])\n",
+    "            temp_distance[j]=dist\n",
+    "        temp_distance=sorted(temp_distance.items(),key=operator.itemgetter(1))\n",
+    "        temp_distance=temp_distance[:K]\n",
+    "        temp_list=[]\n",
+    "        for key,value in temp_distance:\n",
+    "            temp_list.append(train[1][key])\n",
+    "        predicted.append(max(temp_list))\n",
+    "    return actual,predicted\n",
+    "        "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 59,
+   "metadata": {
+    "scrolled": false
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "2395\n",
+      "(3500, 2395)\n",
+      "(1500, 2395)\n"
+     ]
+    }
+   ],
+   "source": [
+    "sorted_feature_list=FEATURE_SELECTION_TFIDF(train,test,5)\n",
+    "print(len(sorted_feature_list))\n",
+    "train_matrix=preprocessing_for_KNN_func(train,sorted_feature_list)\n",
+    "test_matrix=preprocessing_for_KNN_func(test,sorted_feature_list)\n",
+    "# actual3,predicted3=KNN_algorithm_func(train_matrix,test_matrix)\n",
+    "# acc3=accuaracy(actual3,predicted3)\n",
+    "# print(acc3)\n",
+    "# print(\"--- %s seconds ---\" % (time.time() - start_time))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 73,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/usr/local/lib/python3.7/dist-packages/ipykernel_launcher.py:9: RuntimeWarning: divide by zero encountered in log2\n",
+      "  if __name__ == '__main__':\n",
+      "/usr/local/lib/python3.7/dist-packages/ipykernel_launcher.py:9: RuntimeWarning: invalid value encountered in double_scalars\n",
+      "  if __name__ == '__main__':\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "615\n",
+      "(4000, 615)\n",
+      "(1000, 615)\n"
+     ]
+    }
+   ],
+   "source": [
+    "sorted_feature_list=FEATURE_SELECTION_MUTUAL_INFORMATION(train,test,1)\n",
+    "print(len(sorted_feature_list))\n",
+    "train_matrix=preprocessing_for_KNN_func(train,sorted_feature_list)\n",
+    "test_matrix=preprocessing_for_KNN_func(test,sorted_feature_list)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 74,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "4000\n",
+      "90.8\n",
+      "[[175   7   0   3   8]\n",
+      " [ 10 188   4   3   2]\n",
+      " [  4   2 210   0   0]\n",
+      " [  3   4   2 186   2]\n",
+      " [ 27   8   3   0 149]]\n",
+      "4000\n",
+      "87.2\n",
+      "[[118  25   4   8  38]\n",
+      " [  0 179  10   9   9]\n",
+      " [  0   0 211   2   3]\n",
+      " [  0   0   0 187  10]\n",
+      " [  4   3   1   2 177]]\n",
+      "4000\n",
+      "80.5\n",
+      "[[ 72  35   8  14  64]\n",
+      " [  0 160  14  13  20]\n",
+      " [  0   0 207   2   7]\n",
+      " [  0   0   0 181  16]\n",
+      " [  0   0   0   2 185]]\n",
+      "--- 659.7089610099792 seconds ---\n"
+     ]
+    }
+   ],
+   "source": [
+    "start_time=time.time()\n",
+    "K=[1,3,5]\n",
+    "for kkk in K:\n",
+    "    actual3,predicted3=KNN_algorithm_func(train_matrix,test_matrix,kkk)\n",
+    "    acc3=accuaracy(actual3,predicted3)\n",
+    "    conf=confusion_matrix_func(actual3,predicted3)\n",
+    "\n",
+    "print(\"--- %s seconds ---\" % (time.time() - start_time))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
