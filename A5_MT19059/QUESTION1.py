@@ -28,7 +28,6 @@ import time
 from sklearn.metrics.pairwise import cosine_similarity
 
 
-# In[2]:
 
 
 def convert_tolowercase(data):
